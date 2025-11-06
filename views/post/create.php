@@ -26,7 +26,7 @@ $this->title = 'Оставить сообщение';
 <?= $form->field($model, 'email')->input('email') ?>
 <?= $form->field($model, 'message')->textarea(['rows' => 6]) ?>
 <?= $form->field($model, 'captcha')->widget(Captcha::class, [
-    'captchaAction' => '/site/captcha'
+    'captchaAction' => 'post/captcha',
 ]) ?>
 
 <div class="form-group">

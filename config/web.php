@@ -48,8 +48,8 @@ $config = [
             'rules' => [
                 'posts' => 'post/index',
                 'post/create' => 'post/create',
-                'post/edit' => 'post/edit',
-                'post/delete' => 'post/delete',
+                'post/edit/<token>' => 'post/edit',
+                'post/delete/<token>' => 'post/delete',
             ],
         ],
     ],

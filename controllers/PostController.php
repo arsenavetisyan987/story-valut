@@ -5,9 +5,9 @@ declare(strict_types=1);
 namespace app\controllers;
 
 use Yii;
+use yii\captcha\CaptchaAction;
 use yii\web\Controller;
 use yii\web\NotFoundHttpException;
-use yii\web\Response;
 use app\models\Post;
 use yii\filters\VerbFilter;
 
@@ -25,17 +25,49 @@ class PostController extends Controller
         ];
     }
 
+
+    public function actions()
+    {
+        return [
+            'captcha' => [
+                'class' => CaptchaAction::class,
+                'fixedVerifyCode' => YII_ENV_TEST ? 'testme' : null,
+            ],
+        ];
+    }
+
+
     public function actionIndex()
     {
-        $posts = Post::find()
-            ->where(['deleted_at' => null])
-            ->orderBy(['created_at' => SORT_DESC])
-            ->all();
+        $post = new Post();
+
+        if ($post->load(Yii::$app->request->post())) {
+
+            $ip = Yii::$app->request->userIP;
+            if (!Post::canPost($ip)) {
+                $lastPost = Post::find()->where(['ip' => $ip])->orderBy(['created_at' => SORT_DESC])->one();
+                $nextTime = $lastPost->created_at + 180;
+                $wait = $nextTime - time();
+                Yii::$app->session->setFlash('error', "Подождите $wait секунд до следующей публикации.");
+            } else {
+                $post->ip = $ip;
+                $post->created_at = time();
+
+                if ($post->save()) {
+                    Yii::$app->session->setFlash('success', 'Пост успешно опубликован!');
+                    return $this->refresh();
+                }
+            }
+        }
+
+        $posts = Post::find()->where(['deleted_at' => null])->orderBy(['created_at' => SORT_DESC])->all();
 
         return $this->render('index', [
+            'post' => $post,
             'posts' => $posts,
         ]);
     }
+
 
     /**
      * Создание нового поста
@@ -58,7 +90,7 @@ class PostController extends Controller
 
             if ($model->save()) {
                 Yii::$app->session->setFlash('success', 'Пост успешно отправлен!');
-                return $this->refresh();
+                return $this->redirect(['index']);
             }
         }
 

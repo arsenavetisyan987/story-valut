@@ -17,18 +17,28 @@ class Post extends ActiveRecord
      */
     public function getMaskedIp()
     {
+        if (!$this->ip || !is_string($this->ip)) {
+            return '';
+        }
+
         if (filter_var($this->ip, FILTER_VALIDATE_IP, FILTER_FLAG_IPV4)) {
             $parts = explode('.', $this->ip);
-            $parts[2] = '**';
-            $parts[3] = '**';
+            if (count($parts) === 4) {
+                $parts[2] = '**';
+                $parts[3] = '**';
+            }
             return implode('.', $parts);
         } elseif (filter_var($this->ip, FILTER_VALIDATE_IP, FILTER_FLAG_IPV6)) {
             $parts = explode(':', $this->ip);
-            for ($i = count($parts) - 4; $i < count($parts); $i++) {
-                $parts[$i] = '****';
+            $n = count($parts);
+            if ($n >= 4) {
+                for ($i = $n - 4; $i < $n; $i++) {
+                    $parts[$i] = '****';
+                }
             }
             return implode(':', $parts);
         }
+
         return $this->ip;
     }
 
@@ -68,7 +78,7 @@ class Post extends ActiveRecord
             ['email', 'email'],
             ['message', 'trim'],
             ['message', 'match', 'pattern' => '/\S+/', 'message' => 'Message cannot be only spaces.'],
-            ['captcha', 'captcha'],
+            ['captcha', 'captcha', 'captchaAction' => 'post/captcha', 'caseSensitive' => false],
         ];
     }
 
@@ -99,16 +109,16 @@ class Post extends ActiveRecord
         if (!$lastPost) {
             return true;
         }
-        return (time() - $lastPost->created_at) >= 180; // 180 секунд = 3 минуты
+        return (time() - $lastPost->created_at) >= 180;
     }
 
     public function canEdit()
     {
-        return time() - $this->created_at <= 12 * 3600; // 12 часов
+        return time() - $this->created_at <= 12 * 3600;
     }
 
     public function canDelete()
     {
-        return time() - $this->created_at <= 14 * 24 * 3600; // 14 дней
+        return time() - $this->created_at <= 14 * 24 * 3600;
     }
 }
