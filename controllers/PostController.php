@@ -7,7 +7,6 @@ namespace app\controllers;
 use Yii;
 use yii\captcha\CaptchaAction;
 use yii\web\Controller;
-use yii\web\NotFoundHttpException;
 use app\models\Post;
 use yii\filters\VerbFilter;
 
@@ -36,7 +35,6 @@ class PostController extends Controller
         ];
     }
 
-
     public function actionIndex()
     {
         $post = new Post();
@@ -51,7 +49,7 @@ class PostController extends Controller
                 Yii::$app->session->setFlash('error', "Подождите $wait секунд до следующей публикации.");
             } else {
                 $post->ip = $ip;
-                $post->created_at = time();
+                $post->created_at = date('Y-m-d H:i:s');
 
                 if ($post->save()) {
                     Yii::$app->session->setFlash('success', 'Пост успешно опубликован!');
@@ -79,7 +77,7 @@ class PostController extends Controller
         if ($model->load(Yii::$app->request->post())) {
 
             $model->ip = Yii::$app->request->userIP;
-            $model->created_at = time();
+            $model->created_at = date('Y-m-d H:i:s');
 
             if (!Post::canPost($model->ip)) {
                 $lastPost = Post::find()->where(['ip' => $model->ip])->orderBy(['created_at' => SORT_DESC])->one();
@@ -100,34 +98,68 @@ class PostController extends Controller
     public function actionEdit($token)
     {
         $post = Post::find()->where(['edit_token' => $token, 'deleted_at' => null])->one();
-        if (!$post || !$post->canEdit()) {
-            throw new NotFoundHttpException('Пост не найден или время редактирования истекло.');
+
+        if (!$post) {
+            Yii::$app->session->setFlash('error', 'Пост не найден. Возможно, ссылка неправильная.');
+            return $this->redirect(['index']);
         }
 
-        if ($post->load(Yii::$app->request->post()) && $post->validate()) {
-            $post->save();
-            Yii::$app->session->setFlash('success', 'Пост обновлён!');
+        if (!$post->canEdit()) {
+            Yii::$app->session->setFlash('error', 'Время редактирования поста истекло. 
+                Редактирование возможно только в течение 12 часов после публикации.');
             return $this->redirect(['index']);
+        }
+
+        if (Yii::$app->request->isPost) {
+            if ($post->load(Yii::$app->request->post())) {
+
+                if ($post->validate(['message'])) {
+                    if ($post->save(false)) {
+                        Yii::$app->session->setFlash('success', 'Пост успешно обновлён!');
+                    } else {
+                        Yii::$app->session->setFlash('error', 'Не удалось сохранить изменения.');
+                    }
+                } else {
+                    Yii::$app->session->setFlash('error', 'Ошибка: сообщение не прошло проверку. 
+                    Длина текста должна быть 5-1000 символов и не может состоять только из пробелов.');
+                }
+
+                return $this->redirect(['index']);
+            }
         }
 
         return $this->render('edit', ['post' => $post]);
     }
 
+
     public function actionDelete($token)
     {
         $post = Post::find()->where(['delete_token' => $token, 'deleted_at' => null])->one();
-        if (!$post || !$post->canDelete()) {
-            throw new NotFoundHttpException('Пост не найден или время удаления истекло.');
+
+        if (!$post) {
+            Yii::$app->session->setFlash('error', 'Пост не найден. Возможно, ссылка неправильная.');
+            return $this->redirect(['index']);
         }
 
-        if (Yii::$app->request->post('confirm')) {
-            $post->deleted_at = time(); // soft-delete
-            $post->save();
-            Yii::$app->session->setFlash('success', 'Пост удалён!');
+        if (!$post->canDelete()) {
+            Yii::$app->session->setFlash('error', 'Время удаления поста истекло. Удаление возможно только в течение 14 дней после публикации.');
+            return $this->redirect(['index']);
+        }
+
+        if (Yii::$app->request->isPost) {
+            if (Yii::$app->request->post('confirm')) {
+                $post->deleted_at = date('Y-m-d H:i:s');
+                if ($post->save(false)) {
+                    Yii::$app->session->setFlash('success', 'Пост успешно удалён!');
+                } else {
+                    Yii::$app->session->setFlash('error', 'Не удалось удалить пост.');
+                }
+            } else {
+                Yii::$app->session->setFlash('error', 'Действие не подтверждено.');
+            }
             return $this->redirect(['index']);
         }
 
         return $this->render('delete', ['post' => $post]);
     }
-
 }

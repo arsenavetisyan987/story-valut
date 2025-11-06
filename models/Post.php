@@ -47,7 +47,8 @@ class Post extends ActiveRecord
      */
     public function getCreatedAtRelative()
     {
-        $diff = time() - $this->created_at;
+        $createdAt = strtotime($this->created_at);
+        $diff = time() - $createdAt;
 
         if ($diff < 60) return "$diff секунд назад";
         if ($diff < 3600) return floor($diff / 60) . " минут назад";
@@ -94,10 +95,14 @@ class Post extends ActiveRecord
         if ($insert) {
             $this->edit_token = Yii::$app->security->generateRandomString(32);
             $this->delete_token = Yii::$app->security->generateRandomString(32);
+            $this->created_at = date('Y-m-d H:i:s');
+        } else {
+            $this->updated_at = date('Y-m-d H:i:s');
         }
 
         return true;
     }
+
 
     /**
      * Проверка частоты публикации по IP
@@ -109,16 +114,20 @@ class Post extends ActiveRecord
         if (!$lastPost) {
             return true;
         }
-        return (time() - $lastPost->created_at) >= 180;
+        $lastTime = strtotime($lastPost->created_at);
+        return (time() - $lastTime) >= 180;
     }
+
 
     public function canEdit()
     {
-        return time() - $this->created_at <= 12 * 3600;
+        $createdAt = strtotime($this->created_at);
+        return (time() - $createdAt) <= 12 * 3600;
     }
 
     public function canDelete()
     {
-        return time() - $this->created_at <= 14 * 24 * 3600;
+        $createdAt = strtotime($this->created_at);
+        return (time() - $createdAt) <= 14 * 24 * 3600;
     }
 }
