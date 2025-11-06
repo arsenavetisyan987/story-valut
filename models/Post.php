@@ -8,6 +8,8 @@ use yii\db\ActiveRecord;
 
 class Post extends ActiveRecord
 {
+    public $captcha;
+
     public static function tableName()
     {
         return '{{%post}}';
@@ -22,6 +24,7 @@ class Post extends ActiveRecord
             ['email', 'email'],
             ['message', 'trim'],
             ['message', 'match', 'pattern' => '/\S+/', 'message' => 'Message cannot be only spaces.'],
+            ['captcha', 'captcha'],
         ];
     }
 
