@@ -8,7 +8,50 @@ use yii\db\ActiveRecord;
 
 class Post extends ActiveRecord
 {
+    // Виртуальное свойство для captcha (если ещё не добавлено)
     public $captcha;
+
+    /**
+     * Возвращает IP с маской
+     */
+    public function getMaskedIp()
+    {
+        if (filter_var($this->ip, FILTER_VALIDATE_IP, FILTER_FLAG_IPV4)) {
+            $parts = explode('.', $this->ip);
+            $parts[2] = '**';
+            $parts[3] = '**';
+            return implode('.', $parts);
+        } elseif (filter_var($this->ip, FILTER_VALIDATE_IP, FILTER_FLAG_IPV6)) {
+            $parts = explode(':', $this->ip);
+            for ($i = count($parts) - 4; $i < count($parts); $i++) {
+                $parts[$i] = '****';
+            }
+            return implode(':', $parts);
+        }
+        return $this->ip;
+    }
+
+    /**
+     * Возвращает relative time
+     */
+    public function getCreatedAtRelative()
+    {
+        $diff = time() - $this->created_at;
+
+        if ($diff < 60) return "$diff секунд назад";
+        if ($diff < 3600) return floor($diff / 60) . " минут назад";
+        if ($diff < 86400) return floor($diff / 3600) . " часов назад";
+        return floor($diff / 86400) . " дней назад";
+    }
+
+    /**
+     * Подсчёт количества постов автора по IP
+     */
+    public function getPostsCountByIp()
+    {
+        return self::find()->where(['ip' => $this->ip])->count();
+    }
+
 
     public static function tableName()
     {

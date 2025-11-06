@@ -24,6 +24,16 @@ class PostController extends Controller
         ];
     }
 
+    public function actionIndex()
+    {
+        $posts = Post::find()
+            ->where(['deleted_at' => null])
+            ->orderBy(['created_at' => SORT_DESC])
+            ->all();
+
+        return $this->render('index', ['posts' => $posts]);
+    }
+
     /**
      * Создание нового поста
      */

@@ -47,6 +47,7 @@ $config = [
             'showScriptName' => false,
             'rules' => [
                 'post/create' => 'post/create',
+                'posts' => 'post/index',
             ],
         ],
     ],
