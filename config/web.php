@@ -46,8 +46,10 @@ $config = [
             'enablePrettyUrl' => true,
             'showScriptName' => false,
             'rules' => [
-                'post/create' => 'post/create',
                 'posts' => 'post/index',
+                'post/create' => 'post/create',
+                'post/edit' => 'post/edit',
+                'post/delete' => 'post/delete',
             ],
         ],
     ],

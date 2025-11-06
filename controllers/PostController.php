@@ -6,6 +6,7 @@ namespace app\controllers;
 
 use Yii;
 use yii\web\Controller;
+use yii\web\NotFoundHttpException;
 use yii\web\Response;
 use app\models\Post;
 use yii\filters\VerbFilter;
@@ -31,7 +32,9 @@ class PostController extends Controller
             ->orderBy(['created_at' => SORT_DESC])
             ->all();
 
-        return $this->render('index', ['posts' => $posts]);
+        return $this->render('index', [
+            'posts' => $posts,
+        ]);
     }
 
     /**
@@ -61,4 +64,38 @@ class PostController extends Controller
 
         return $this->render('create', ['model' => $model]);
     }
+
+    public function actionEdit($token)
+    {
+        $post = Post::find()->where(['edit_token' => $token, 'deleted_at' => null])->one();
+        if (!$post || !$post->canEdit()) {
+            throw new NotFoundHttpException('Пост не найден или время редактирования истекло.');
+        }
+
+        if ($post->load(Yii::$app->request->post()) && $post->validate()) {
+            $post->save();
+            Yii::$app->session->setFlash('success', 'Пост обновлён!');
+            return $this->redirect(['index']);
+        }
+
+        return $this->render('edit', ['post' => $post]);
+    }
+
+    public function actionDelete($token)
+    {
+        $post = Post::find()->where(['delete_token' => $token, 'deleted_at' => null])->one();
+        if (!$post || !$post->canDelete()) {
+            throw new NotFoundHttpException('Пост не найден или время удаления истекло.');
+        }
+
+        if (Yii::$app->request->post('confirm')) {
+            $post->deleted_at = time(); // soft-delete
+            $post->save();
+            Yii::$app->session->setFlash('success', 'Пост удалён!');
+            return $this->redirect(['index']);
+        }
+
+        return $this->render('delete', ['post' => $post]);
+    }
+
 }

@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace app\models;
 
 use yii\db\ActiveRecord;
+use Yii;
 
 class Post extends ActiveRecord
 {
@@ -76,11 +77,14 @@ class Post extends ActiveRecord
      */
     public function beforeSave($insert)
     {
-        if (!parent::beforeSave($insert)) {
-            return false;
-        }
+        if (!parent::beforeSave($insert)) return false;
 
         $this->message = strip_tags($this->message, '<b><i><s>');
+
+        if ($insert) {
+            $this->edit_token = Yii::$app->security->generateRandomString(32);
+            $this->delete_token = Yii::$app->security->generateRandomString(32);
+        }
 
         return true;
     }
@@ -96,5 +100,15 @@ class Post extends ActiveRecord
             return true;
         }
         return (time() - $lastPost->created_at) >= 180; // 180 секунд = 3 минуты
+    }
+
+    public function canEdit()
+    {
+        return time() - $this->created_at <= 12 * 3600; // 12 часов
+    }
+
+    public function canDelete()
+    {
+        return time() - $this->created_at <= 14 * 24 * 3600; // 14 дней
     }
 }
