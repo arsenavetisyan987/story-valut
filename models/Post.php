@@ -47,6 +47,10 @@ class Post extends ActiveRecord
      */
     public function getCreatedAtRelative()
     {
+        if (!$this->created_at) {
+            return '';
+        }
+
         $createdAt = strtotime($this->created_at);
         $diff = time() - $createdAt;
 
@@ -91,6 +95,8 @@ class Post extends ActiveRecord
         if (!parent::beforeSave($insert)) return false;
 
         $this->message = strip_tags($this->message, '<b><i><s>');
+
+        $this->ip = $this->getMaskedIp();
 
         if ($insert) {
             $this->edit_token = Yii::$app->security->generateRandomString(32);

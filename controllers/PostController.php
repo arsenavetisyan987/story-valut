@@ -40,11 +40,12 @@ class PostController extends Controller
         $post = new Post();
 
         if ($post->load(Yii::$app->request->post())) {
-
             $ip = Yii::$app->request->userIP;
+
             if (!Post::canPost($ip)) {
                 $lastPost = Post::find()->where(['ip' => $ip])->orderBy(['created_at' => SORT_DESC])->one();
-                $nextTime = $lastPost->created_at + 180;
+                $lastTime = strtotime($lastPost->created_at);
+                $nextTime = $lastTime + 180; // 3 минуты
                 $wait = $nextTime - time();
                 Yii::$app->session->setFlash('error', "Подождите $wait секунд до следующей публикации.");
             } else {
@@ -66,22 +67,19 @@ class PostController extends Controller
         ]);
     }
 
-
-    /**
-     * Создание нового поста
-     */
     public function actionCreate()
     {
         $model = new Post();
 
         if ($model->load(Yii::$app->request->post())) {
-
-            $model->ip = Yii::$app->request->userIP;
+            $ip = Yii::$app->request->userIP;
+            $model->ip = $ip;
             $model->created_at = date('Y-m-d H:i:s');
 
-            if (!Post::canPost($model->ip)) {
-                $lastPost = Post::find()->where(['ip' => $model->ip])->orderBy(['created_at' => SORT_DESC])->one();
-                $nextTime = $lastPost->created_at + 180;
+            if (!Post::canPost($ip)) {
+                $lastPost = Post::find()->where(['ip' => $ip])->orderBy(['created_at' => SORT_DESC])->one();
+                $lastTime = strtotime($lastPost->created_at);
+                $nextTime = $lastTime + 180;
                 Yii::$app->session->setFlash('error', "Вы можете отправить следующий пост не ранее " . date('H:i:s', $nextTime));
                 return $this->refresh();
             }
@@ -100,49 +98,42 @@ class PostController extends Controller
         $post = Post::find()->where(['edit_token' => $token, 'deleted_at' => null])->one();
 
         if (!$post) {
-            Yii::$app->session->setFlash('error', 'Пост не найден. Возможно, ссылка неправильная.');
+            Yii::$app->session->setFlash('error', 'Пост не найден.');
             return $this->redirect(['index']);
         }
 
         if (!$post->canEdit()) {
-            Yii::$app->session->setFlash('error', 'Время редактирования поста истекло. 
-                Редактирование возможно только в течение 12 часов после публикации.');
+            Yii::$app->session->setFlash('error', 'Время редактирования поста истекло.');
             return $this->redirect(['index']);
         }
 
-        if (Yii::$app->request->isPost) {
-            if ($post->load(Yii::$app->request->post())) {
-
-                if ($post->validate(['message'])) {
-                    if ($post->save(false)) {
-                        Yii::$app->session->setFlash('success', 'Пост успешно обновлён!');
-                    } else {
-                        Yii::$app->session->setFlash('error', 'Не удалось сохранить изменения.');
-                    }
+        if (Yii::$app->request->isPost && $post->load(Yii::$app->request->post())) {
+            if ($post->validate(['message'])) {
+                if ($post->save(false)) {
+                    Yii::$app->session->setFlash('success', 'Пост успешно обновлён!');
                 } else {
-                    Yii::$app->session->setFlash('error', 'Ошибка: сообщение не прошло проверку. 
-                    Длина текста должна быть 5-1000 символов и не может состоять только из пробелов.');
+                    Yii::$app->session->setFlash('error', 'Не удалось сохранить изменения.');
                 }
-
-                return $this->redirect(['index']);
+            } else {
+                Yii::$app->session->setFlash('error', 'Сообщение должно быть 5-1000 символов и не только пробелы.');
             }
+            return $this->redirect(['index']);
         }
 
         return $this->render('edit', ['post' => $post]);
     }
-
 
     public function actionDelete($token)
     {
         $post = Post::find()->where(['delete_token' => $token, 'deleted_at' => null])->one();
 
         if (!$post) {
-            Yii::$app->session->setFlash('error', 'Пост не найден. Возможно, ссылка неправильная.');
+            Yii::$app->session->setFlash('error', 'Пост не найден.');
             return $this->redirect(['index']);
         }
 
         if (!$post->canDelete()) {
-            Yii::$app->session->setFlash('error', 'Время удаления поста истекло. Удаление возможно только в течение 14 дней после публикации.');
+            Yii::$app->session->setFlash('error', 'Время удаления поста истекло.');
             return $this->redirect(['index']);
         }
 
